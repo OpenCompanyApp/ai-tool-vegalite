@@ -16,8 +16,8 @@ class VegaLiteToolProvider implements ToolProvider
     public function appMeta(): array
     {
         return [
-            'label' => 'bar, line, scatter, heatmap charts',
-            'description' => 'Vega-Lite data visualization rendering',
+            'label' => 'charts: bar, line, scatter, heatmap, donut, boxplot',
+            'description' => 'Vega-Lite chart rendering',
             'icon' => 'ph:chart-bar',
             'logo' => 'ph:chart-bar',
         ];
