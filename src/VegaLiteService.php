@@ -101,13 +101,13 @@ class VegaLiteService
     private function findRenderScript(): string
     {
         // When installed via Composer, the package is in vendor/
-        $vendorPath = base_path('vendor/opencompanyapp/ai-tool-vegalite/bin/render.cjs');
+        $vendorPath = base_path('vendor/opencompanyapp/ai-tool-vegalite/bin/render.mjs');
         if (file_exists($vendorPath)) {
             return $vendorPath;
         }
 
         // When using path repository, it may be in tmp/
-        $tmpPath = base_path('tmp/ai-tool-vegalite/bin/render.cjs');
+        $tmpPath = base_path('tmp/ai-tool-vegalite/bin/render.mjs');
         if (file_exists($tmpPath)) {
             return $tmpPath;
         }
