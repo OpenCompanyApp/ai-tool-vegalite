@@ -44,7 +44,7 @@ DESC;
     {
         $spec = trim($request['spec'] ?? '');
         if (empty($spec)) {
-            return 'Error: Vega-Lite JSON specification is required.';
+            return 'Error: Vega-Lite JSON specification is required. Pass your chart JSON in the "spec" parameter.';
         }
 
         // Validate it's valid JSON
