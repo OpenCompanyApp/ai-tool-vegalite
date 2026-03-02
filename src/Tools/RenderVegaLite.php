@@ -3,14 +3,18 @@
 namespace OpenCompany\AiToolVegaLite\Tools;
 
 use Illuminate\Contracts\JsonSchema\JsonSchema;
+use Illuminate\Support\Str;
 use Laravel\Ai\Contracts\Tool;
 use Laravel\Ai\Tools\Request;
 use OpenCompany\AiToolVegaLite\VegaLiteService;
+use OpenCompany\IntegrationCore\Contracts\AgentFileStorage;
 
 class RenderVegaLite implements Tool
 {
     public function __construct(
         private VegaLiteService $vegaLiteService,
+        private ?AgentFileStorage $fileStorage = null,
+        private ?object $agent = null,
     ) {}
 
     public function description(): string
@@ -57,6 +61,14 @@ DESC;
         $width = (int) ($request['width'] ?? 800);
 
         try {
+            if ($this->fileStorage && $this->agent) {
+                $bytes = $this->vegaLiteService->renderToBytes($spec, $width);
+                $filename = Str::uuid()->toString() . '.png';
+                $result = $this->fileStorage->saveFile($this->agent, $filename, $bytes, 'image/png', 'vegalite');
+
+                return "![{$title}]({$result['url']})";
+            }
+
             $url = $this->vegaLiteService->render($spec, $width);
 
             return "![{$title}]({$url})";

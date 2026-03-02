@@ -4,6 +4,7 @@ namespace OpenCompany\AiToolVegaLite;
 
 use Laravel\Ai\Contracts\Tool;
 use OpenCompany\AiToolVegaLite\Tools\RenderVegaLite;
+use OpenCompany\IntegrationCore\Contracts\AgentFileStorage;
 use OpenCompany\IntegrationCore\Contracts\ToolProvider;
 
 class VegaLiteToolProvider implements ToolProvider
@@ -43,6 +44,12 @@ class VegaLiteToolProvider implements ToolProvider
 
     public function createTool(string $class, array $context = []): Tool
     {
-        return new $class(app(VegaLiteService::class));
+        $fileStorage = app()->bound(AgentFileStorage::class) ? app(AgentFileStorage::class) : null;
+
+        return new $class(
+            app(VegaLiteService::class),
+            $fileStorage,
+            $context['agent'] ?? null,
+        );
     }
 }

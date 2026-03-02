@@ -9,26 +9,19 @@ use Symfony\Component\Process\Process;
 class VegaLiteService
 {
     /**
-     * Render a Vega-Lite JSON specification to a PNG image.
-     *
-     * @return string Public URL path to the generated PNG
+     * Render a Vega-Lite JSON specification to raw PNG bytes.
      */
-    public function render(string $specJson, int $width = 800): string
+    public function renderToBytes(string $specJson, int $width = 800): string
     {
-        // Validate JSON
         $decoded = json_decode($specJson);
         if (json_last_error() !== JSON_ERROR_NONE) {
             throw new \InvalidArgumentException('Invalid JSON: ' . json_last_error_msg());
         }
 
-        Storage::disk('public')->makeDirectory('vegalite');
-
         $uuid = Str::uuid()->toString();
-        $relativePath = 'vegalite/' . $uuid . '.png';
-        $outputPath = Storage::disk('public')->path($relativePath);
-
-        // Write spec to temp JSON file
         $tmpInput = sys_get_temp_dir() . '/' . $uuid . '.json';
+        $tmpOutput = sys_get_temp_dir() . '/' . $uuid . '.png';
+
         file_put_contents($tmpInput, $specJson);
 
         try {
@@ -39,40 +32,60 @@ class VegaLiteService
                 $node,
                 $renderScript,
                 $tmpInput,
-                $outputPath,
+                $tmpOutput,
                 (string) $width,
             ];
 
             $process = new Process($command, base_path());
             $process->setTimeout(30);
-
-            // Ensure node is in PATH for queue workers with minimal environments.
-            $env = $process->getEnv();
-            $path = getenv('PATH') ?: '/usr/local/bin:/usr/bin:/bin';
-            foreach (['/opt/homebrew/bin', '/usr/local/bin', dirname(PHP_BINARY)] as $dir) {
-                if (is_dir($dir) && !str_contains($path, $dir)) {
-                    $path = $dir . ':' . $path;
-                }
-            }
-            $env['PATH'] = $path;
-            $process->setEnv($env);
-
+            $process->setEnv($this->buildEnv($process));
             $process->run();
 
             if (!$process->isSuccessful()) {
                 $error = $process->getErrorOutput() ?: $process->getOutput();
-
                 throw new \RuntimeException('Vega-Lite rendering failed: ' . trim($error));
             }
 
-            if (!file_exists($outputPath) || filesize($outputPath) === 0) {
+            if (!file_exists($tmpOutput) || filesize($tmpOutput) === 0) {
                 throw new \RuntimeException('Vega-Lite render script produced no output.');
             }
+
+            return file_get_contents($tmpOutput);
         } finally {
             @unlink($tmpInput);
+            @unlink($tmpOutput);
         }
+    }
+
+    /**
+     * Render a Vega-Lite JSON specification to a PNG image on public disk.
+     *
+     * @return string Public URL path to the generated PNG
+     */
+    public function render(string $specJson, int $width = 800): string
+    {
+        $bytes = $this->renderToBytes($specJson, $width);
+
+        Storage::disk('public')->makeDirectory('vegalite');
+
+        $relativePath = 'vegalite/' . Str::uuid()->toString() . '.png';
+        Storage::disk('public')->put($relativePath, $bytes);
 
         return '/storage/' . $relativePath;
+    }
+
+    private function buildEnv(Process $process): array
+    {
+        $env = $process->getEnv();
+        $path = getenv('PATH') ?: '/usr/local/bin:/usr/bin:/bin';
+        foreach (['/opt/homebrew/bin', '/usr/local/bin', dirname(PHP_BINARY)] as $dir) {
+            if (is_dir($dir) && !str_contains($path, $dir)) {
+                $path = $dir . ':' . $path;
+            }
+        }
+        $env['PATH'] = $path;
+
+        return $env;
     }
 
     /**
